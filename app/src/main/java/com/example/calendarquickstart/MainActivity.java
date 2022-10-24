@@ -2,6 +2,7 @@ package com.example.calendarquickstart;
 
 import com.google.api.client.googleapis.extensions.android.gms.auth.GooglePlayServicesAvailabilityIOException;
 import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
+import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.api.client.util.DateTime;
 
@@ -34,17 +35,18 @@ import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.JsonFactory;
-import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
-import com.google.api.services.calendar.CalendarScopes;
 
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
 
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
+// Based on this good post: https://qiita.com/couzie/items/ce8f7780f9a722b2a87d
 public class MainActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks {
 
     GoogleAccountCredential mCredential;
@@ -325,7 +327,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
 
         public MakeRequestTask(GoogleAccountCredential credential) {
             HttpTransport transport = AndroidHttp.newCompatibleTransport();
-            JsonFactory jsonFactory = JacksonFactory.getDefaultInstance();
+            JsonFactory jsonFactory = GsonFactory.getDefaultInstance();
             mService = new com.google.api.services.calendar.Calendar
                     .Builder(transport, jsonFactory, credential)
                     .setApplicationName("Google Calendar API Android Quickstart")
@@ -355,32 +357,18 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
          * @throws IOException
          */
         private String createCalendar() throws IOException {
-            // 新規にカレンダーを作成する
-            com.google.api.services.calendar.model.Calendar calendar = new Calendar();
-            // カレンダーにタイトルを設定する
-            calendar.setSummary("CalendarTitle");
-            // カレンダーにタイムゾーンを設定する
-            calendar.setTimeZone("Asia/Tokyo");
+            Event event = new Event();
 
-            // 作成したカレンダーをGoogleカレンダーに追加する
-            Calendar createdCalendar = mService.calendars().insert(calendar).execute();
-            String calendarId = createdCalendar.getId();
+            Date today = new Date();
+            Date tomorrow = new Date(today.getTime() + (1000 * 60 * 60 * 24));
 
-            // カレンダー一覧から新規に作成したカレンダーのエントリを取得する
-            CalendarListEntry calendarListEntry = mService.calendarList().get(calendarId).execute();
+            event.setStart(new EventDateTime().setDateTime(new DateTime(tomorrow)));
+            event.setEnd(new EventDateTime().setDateTime(new DateTime(tomorrow)));
+            event.setSummary("some summary");
+            event.setDescription("some desc");
+            mService.events().insert("primary", event).execute();
 
-            // カレンダーのデフォルトの背景色を設定する
-            calendarListEntry.setBackgroundColor("#ff0000");
-
-            // カレンダーのデフォルトの背景色をGoogleカレンダーに反映させる
-            CalendarListEntry updatedCalendarListEntry =
-                    mService.calendarList()
-                            .update(calendarListEntry.getId(), calendarListEntry)
-                            .setColorRgbFormat(true)
-                            .execute();
-
-            // 新規に作成したカレンダーのIDを返却する
-            return calendarId;
+            return "Created event id: " + event.getId();
         }
 
         @Override
